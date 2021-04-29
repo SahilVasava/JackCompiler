@@ -8,6 +8,7 @@ class JackTokenizer:
         self.outFile.write('<tokens>\n')
         self.keywords = ['class' , 'constructor' , 'function' , 'method' ,'field' , 'static' , 'var' , 'int' , 'char' , 'boolean' ,'void' , 'true' , 'false' , 'null' , 'this' , 'let' , 'do' ,'if' , 'else' , 'while' , 'return']
         self.symbols = ['{' , '}' , '(' , ')' , '[' , ']' , '.' , ',' , ';' , '+' , '-' , '*' ,'/' , '&' , '|' , '<' , '>' , '=' , '~']
+        self.tokens = []
 
     def advance(self):
         cmtLines = False
