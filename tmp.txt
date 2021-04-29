@@ -1,0 +1,29 @@
+import re
+listt = ['in', 'The']
+sym = ['{' , '}' , '(' , ')' , '[' , ']' , '.' , ',' ,     ';' , '+' , '-' , '*' ,'/' , '&' , '|' , '<' , '>' , '=' , '~']
+esc = '\\'
+symE = [ esc+s for s in sym]
+txt = 'The rain {} op.tp /* &tp in Spain "i am a string" key'
+
+#Find all lower case characters alphabetically between "a" and "m":
+
+
+import re
+
+regexes = [
+    "foo.*",
+    "bar.*",
+    "qu*x"
+    ]
+
+# Make a regex that matches if any of our regexes match.
+#combined = "|".join(symE)
+# "[\w\s]+"
+combined = r'(?<!")[\w\s]*(?!")'
+print(combined)
+if re.match(combined, txt):
+    print("Some regex matched!")
+    
+
+x = re.findall(combined, txt)
+print(x)

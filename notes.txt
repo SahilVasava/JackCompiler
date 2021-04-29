@@ -1,0 +1,25 @@
+
+            '''
+                line
+                re.findall(reg, line)
+                reg = match idenfier, match symbol, match intC, match strC, match keyword 
+                - a seq of letter, digits and _ 
+                - shouldn't start with a digit
+                - shouldn't contain double quote
+                - (?<!["\w\s]+)[\w\s]+(?!")
+
+                - it's just an int
+                
+                - " and seq of chars not inc "or \n "
+                    matches=re.findall(r'\"(.+?)\"',text)
+                    (?:"[\w\s]+")
+
+                - any char matching a char from the symbols list
+                    symE = [ esc+s for s in sym]
+                    combined = "|".join(symE)
+
+                if line.sub() == identifier
+                    token
+                if line.sub() == sybmol
+                    token
+            '''
