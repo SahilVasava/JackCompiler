@@ -9,8 +9,28 @@ class JackTokenizer:
         self.keywords = ['class' , 'constructor' , 'function' , 'method' ,'field' , 'static' , 'var' , 'int' , 'char' , 'boolean' ,'void' , 'true' , 'false' , 'null' , 'this' , 'let' , 'do' ,'if' , 'else' , 'while' , 'return']
         self.symbols = ['{' , '}' , '(' , ')' , '[' , ']' , '.' , ',' , ';' , '+' , '-' , '*' ,'/' , '&' , '|' , '<' , '>' , '=' , '~']
         self.tokens = []
+        self.currentTokenIndex = -1
+        self.currentToken= ''
+        self.parseAllTokens()
 
     def advance(self):
+        self.currentTokenIndex = self.currentTokenIndex + 1
+        self.currenToken = self.tokens[self.currentTokenIndex]
+        if self.currentTokenIndex < len(self.tokens):
+            return self.currentToken 
+        else:
+            return None
+
+    def backward(self):
+        self.currentTokenIndex = self.currentTokenIndex - 1
+        self.currenToken = self.tokens[self.currentTokenIndex]
+        if (self.currentTokenIndex < len(self.tokens)) and (self.currentTokenIndex >= 0):
+            return self.currentToken 
+        else:
+            return None
+        
+
+    def parseAllTokens(self):
         cmtLines = False
         for line in self.jFile:
             line = line.strip()
@@ -32,6 +52,7 @@ class JackTokenizer:
                         # if token is not empty
                         if token.strip():
                             self.outFile.write('<'+self.tokenType(token) +'>'+ token + '</' +self.tokenType(token) +'>\n')
+                            self.tokens.append(token)
                             print(self.tokenType(token))
                             print(token)
                         if ch == '<':
@@ -45,6 +66,7 @@ class JackTokenizer:
                         else:
                             token = ch
                         self.outFile.write('<'+self.tokenType(token) +'>'+ token + '</' +self.tokenType(token) +'>\n')
+                        self.tokens.append(token)
                         print(self.tokenType(token))
                         print(token)
                         token = ''
@@ -53,6 +75,7 @@ class JackTokenizer:
                         stringC =  not stringC 
                         if token.strip() and stringC:
                             self.outFile.write('<'+self.tokenType(token) +'>'+ token + '</' +self.tokenType(token) +'>\n')
+                            self.tokens.append(token)
                             print(self.tokenType(token))
                             print(token)
                         if stringC:
@@ -60,6 +83,7 @@ class JackTokenizer:
                         else:
                             token += ch
                             self.outFile.write('<'+self.tokenType(token) +'>'+ token[1:-1] + '</' +self.tokenType(token) +'>\n')
+                            self.tokens.append(token[1:-1])
                             print(self.tokenType(token))
                             print(token)
                             token = ''
@@ -68,13 +92,16 @@ class JackTokenizer:
                     elif not stringC:
                         if token.strip():
                             self.outFile.write('<'+self.tokenType(token) +'>'+ token + '</' +self.tokenType(token) +'>\n')
+                            self.tokens.append(token)
                             print(self.tokenType(token))
                             print(token)
                         token = ''
         self.outFile.write('</tokens>')
         self.outFile.close()
 
-    def tokenType(self,token):
+    def tokenType(self,token=None):
+        if token ==None:
+            token = self.currentToken
         if token in self.symbols + ['&lt;', '&gt;', '&quot;', '&amp;']:
             return 'symbol'
         elif token in self.keywords:
