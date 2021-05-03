@@ -5,21 +5,22 @@ class CompilationEngine:
         self.compileClass()
 
     def compileClass(self):
-        token = tkz.advance()
+        token = self.tkz.advance()
         print('<class>\n\t')
         self.outF.write('<class>\n\t')
+        print(f'Token: {token}')
         self.printTag(token)
-        token = tkz.advance()
+        token = self.tkz.advance()
         self.printTag(token)
-        token = tkz.advance()
+        token = self.tkz.advance()
         self.printTag(token)
-        token = tkz.advance()
+        token = self.tkz.advance()
         while token == 'static' or token == 'field':
             self.compileClassVarDec(token)
-            token = tkz.advance()
+            token = self.tkz.advance()
         while token == 'constructor' or token == 'function' or token == 'method':
             self.compileSubroutineDec(token)
-            token = tkz.advance()
+            token = self.tkz.advance()
         self.printTag(token)
         print('</class>\n\t')
         self.outF.write('</class>\n\t')
@@ -30,16 +31,16 @@ class CompilationEngine:
         print('<classVarDec>\n\t')
         self.outF.write('<classVarDec>\n\t')
         self.printTag(token)
-        token = tkz.advance()
+        token = self.tkz.advance()
         self.printTag(token)
-        token = tkz.advance()
+        token = self.tkz.advance()
         self.printTag(token)
-        token = tkz.advance()
+        token = self.tkz.advance()
         while token == ',':
             self.printTag(token)
-            token = tkz.advance()
+            token = self.tkz.advance()
             self.printTag(token)
-            token = tkz.advance()
+            token = self.tkz.advance()
         self.printTag(token)
         print('</classVarDec>')
         self.outF.write('</classVarDec>\n\t')
@@ -50,59 +51,60 @@ class CompilationEngine:
         # constuctor | function | method
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # void | type
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # subroutineName
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # (
         self.printTag(token)
 
-        token = tkz.advance()
-        while token != ')':
+        token = self.tkz.advance()
+        #while token != ')':
             # parameterList
-            self.compileParamterList(token)
-            token = tkz.advance()
+        self.compileParamterList(token)
+        token = self.tkz.advance()
 
         # )
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # subroutineBody
         self.compileSubroutineBody(token)
 
-        print('<subroutineDec>\n\t')
-        self.outF.write('<subroutineDec>\n\t')
+        print('</subroutineDec>\n\t')
+        self.outF.write('</subroutineDec>\n\t')
             
     def compileParamterList(self,token):
         print('<parameterList>\n\t')
         self.outF.write('<parameterList>\n\t')
-        # type
-        self.printTag(token) 
-
-        token = tkz.advance()
-        # varName
-        self.printTag(token)
-
-        token = tkz.advance()
-        # , type varName
-        while token != ')':
-            # ,
-            self.printTag(token)
-
-            token = tkz.advance()
+        if token != ')':
             # type
-            self.printTag(token)
+            self.printTag(token) 
 
-            token = tkz.advance()
+            token = self.tkz.advance()
             # varName
             self.printTag(token)
-            token = tkz.advance()
-        tkz.backward()    
+
+            token = self.tkz.advance()
+            # , type varName
+            while token != ')':
+                # ,
+                self.printTag(token)
+
+                token = self.tkz.advance()
+                # type
+                self.printTag(token)
+
+                token = self.tkz.advance()
+                # varName
+                self.printTag(token)
+                token = self.tkz.advance()
+        self.tkz.backward()    
         print('</parameterList>\n\t')
         self.outF.write('</parameterList>\n\t')
         
@@ -113,30 +115,55 @@ class CompilationEngine:
         # {
         self.printTag(token) 
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # check if it a variable declaration
         while token == 'var':
             self.compileVarDec(token)
-            token = tkz.advance()
+            token = self.tkz.advance()
 
-        while token != '}':
-            if token == 'let':
-                self.compileLetStatement()
-            elif token == 'if':
-                self.compileIfStatement()
-            elif token == 'while':
-                self.compileWhileStatement()
-            elif token == 'do':
-                self.compileDoStatement()
-            elif token == 'return':
-                self.compileReturnStatement()
-            token = tkz.advance()
+        if token != '}':
+            self.compileStatements(token)
+
+        #while token != '}':
+        #    if token == 'let':
+        #        self.compileLetStatement(token)
+        #    elif token == 'if':
+        #        self.compileIfStatement(token)
+        #    elif token == 'while':
+        #        self.compileWhileStatement(token)
+        #    elif token == 'do':
+        #        self.compileDoStatement(token)
+        #    elif token == 'return':
+        #        self.compileReturnStatement(token)
+        #    token = self.tkz.advance()
         
+        token = self.tkz.advance()
         # }
         self.printTag(token)
 
         print('</subroutineBody>\n\t')
         self.outF.write('</subroutineBody>\n\t')
+
+    def compileStatements(self,token):
+        print('<statements>\n\t')
+        self.outF.write('<statements>\n\t')
+        
+        while token != '}':
+            if token == 'let':
+                self.compileLetStatement(token)
+            elif token == 'if':
+                self.compileIfStatement(token)
+            elif token == 'while':
+                self.compileWhileStatement(token)
+            elif token == 'do':
+                self.compileDoStatement(token)
+            elif token == 'return':
+                self.compileReturnStatement(token)
+            token = self.tkz.advance()
+        
+        self.tkz.backward()
+        print('</statements>\n\t')
+        self.outF.write('</statements>\n\t')
         
     def compileVarDec(self,token):
         print('<varDec>\n\t')
@@ -145,24 +172,24 @@ class CompilationEngine:
         # var
         self.printTag(token) 
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # type
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # varName
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # , varName
         while token != ';':
             # ,
             self.printTag(token)
 
-            token = tkz.advance()
+            token = self.tkz.advance()
             # varName
             self.printTag(token)
-            token = tkz.advance()
+            token = self.tkz.advance()
 
         # }
         self.printTag(token)
@@ -177,32 +204,32 @@ class CompilationEngine:
         # let
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # varName
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # [
         if token == '[':
             self.printTag(token)
 
-            token = tkz.advance()
+            token = self.tkz.advance()
             # expression
             self.compileExpression(token)
             
-            token = tkz.advance()
+            token = self.tkz.advance()
             # ]
             self.printTag(token)
 
-        token = tkz.advance()
+        #token = self.tkz.advance()
         # =
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # expression
         self.compileExpression(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # ;
         self.printTag(token)
             
@@ -216,69 +243,77 @@ class CompilationEngine:
         # if
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # (
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # expression
         self.compileExpression(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # )
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # {
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
 
-        while token != '}':
-            if token == 'let':
-                self.compileLetStatement()
-            elif token == 'if':
-                self.compileIfStatement()
-            elif token == 'while':
-                self.compileWhileStatement()
-            elif token == 'do':
-                self.compileDoStatement()
-            elif token == 'return':
-                self.compileReturnStatement()
-            token = tkz.advance()
+        #if token != '}':
+        self.compileStatements(token)
+
+        #while token != '}':
+        #    if token == 'let':
+        #        self.compileLetStatement(token)
+        #    elif token == 'if':
+        #        self.compileIfStatement(token)
+        #    elif token == 'while':
+        #        self.compileWhileStatement(token)
+        #    elif token == 'do':
+        #        self.compileDoStatement(token)
+        #    elif token == 'return':
+        #        self.compileReturnStatement(token)
+        #    token = self.tkz.advance()
         
+        token = self.tkz.advance()
         # }
         self.printTag(token)
         
         
-        token = tkz.advance()
+        token = self.tkz.advance()
         # else
         if token == 'else':
             self.printTag(token)
             
-            token = tkz.advance()
+            token = self.tkz.advance()
             # {
             self.printTag(token)
 
-            token = tkz.advance()
+            token = self.tkz.advance()
+    
+            #if token != '}':
+            self.compileStatements(token)
 
-            while token != '}':
-                if token == 'let':
-                    self.compileLetStatement()
-                elif token == 'if':
-                    self.compileIfStatement()
-                elif token == 'while':
-                    self.compileWhileStatement()
-                elif token == 'do':
-                    self.compileDoStatement()
-                elif token == 'return':
-                    self.compileReturnStatement()
-                token = tkz.advance()
+            #while token != '}':
+            #    if token == 'let':
+            #        self.compileLetStatement(token)
+            #    elif token == 'if':
+            #        self.compileIfStatement(token)
+            #    elif token == 'while':
+            #        self.compileWhileStatement(token)
+            #    elif token == 'do':
+            #        self.compileDoStatement(token)
+            #    elif token == 'return':
+            #        self.compileReturnStatement(token)
+            #    token = self.tkz.advance()
             
+            token = self.tkz.advance()
             # }
             self.printTag(token)
         else:
-            tkz.backward()
+            self.tkz.backward()
  
         print('</ifStatement>\n\t')
         self.outF.write('</ifStatement>\n\t')
@@ -290,55 +325,83 @@ class CompilationEngine:
         # while
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # (
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # expression
         self.compileExpression(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # )
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
         # {
         self.printTag(token)
 
-        token = tkz.advance()
+        token = self.tkz.advance()
+        if token != '}':
+            self.compileStatements(token)
 
-        while token != '}':
-            if token == 'let':
-                self.compileLetStatement()
-            elif token == 'if':
-                self.compileIfStatement()
-            elif token == 'while':
-                self.compileWhileStatement()
-            elif token == 'do':
-                self.compileDoStatement()
-            elif token == 'return':
-                self.compileReturnStatement()
-            token = tkz.advance()
+        #while token != '}':
+        #    if token == 'let':
+        #        self.compileLetStatement(token)
+        #    elif token == 'if':
+        #        self.compileIfStatement(token)
+        #    elif token == 'while':
+        #        self.compileWhileStatement(token)
+        #    elif token == 'do':
+        #        self.compileDoStatement(token)
+        #    elif token == 'return':
+        #        self.compileReturnStatement(token)
+        #    token = self.tkz.advance()
         
+        token = self.tkz.advance()
         # }
         self.printTag(token)
         
         print('</whileStatement>\n\t')
         self.outF.write('</whileStatement>\n\t')
 
-    def compileDostatement(self,token):
+    def compileDoStatement(self,token):
         print('<doStatement>\n\t')
         self.outF.write('<doStatement>\n\t')
         
         # do
         self.printTag(token)
 
-        token = tkz.advance()
-        # subroutine call
-        self.compileSubroutineCall(token)
+        token = self.tkz.advance()
 
-        token = tkz.advance()
+        # subroutine call
+        #self.compileSubroutineCall(token)
+
+        # subroutineName | className | varName
+        self.printTag(token)
+
+        token = self.tkz.advance()
+        if token == '.':
+            # .
+            self.printTag(token)
+
+            token = self.tkz.advance()
+            # subroutineName
+            self.printTag(token)
+            token = self.tkz.advance()
+
+        # (
+        self.printTag(token)
+        
+        token = self.tkz.advance()
+        #if token != ')':
+        self.compileExpressionList(token)
+            
+        token = self.tkz.advance()
+        # )
+        self.printTag(token)
+
+        token = self.tkz.advance()
         # ;
         self.printTag(token)
         
@@ -352,67 +415,69 @@ class CompilationEngine:
         # return
         self.printTag(token)
 
-        token = tkz.advance()
-        # expression
-        self.compileExpression(token)
+        token = self.tkz.advance()
+        if token != ';':
+            # expression
+            self.compileExpression(token)
+            token = self.tkz.advance()
 
-        token = tkz.advance()
         # ;
         self.printTag(token)
 
         print('</returnStatement>\n\t')
         self.outF.write('</returnStatement>\n\t')
 
-    def compileSubroutineCall(self,token):
-        print('<subroutineCall>\n\t')
-        self.outF.write('<subroutineCall>\n\t')
-        
-        # subroutineName | className | varName
-        self.printTag(token)
+    #def compileSubroutineCall(self,token):
+    #    print('<subroutineCall>\n\t')
+    #    self.outF.write('<subroutineCall>\n\t')
+    #    
+    #    # subroutineName | className | varName
+    #    self.printTag(token)
 
-        token = tkz.advance()
-        if token == '.':
-            # .
-            self.printTag(token)
+    #    token = self.tkz.advance()
+    #    if token == '.':
+    #        # .
+    #        self.printTag(token)
 
-            token = tkz.advance()
-            # subroutineName
-            self.printTag(token)
-            token = tkz.advance()
+    #        token = self.tkz.advance()
+    #        # subroutineName
+    #        self.printTag(token)
+    #        token = self.tkz.advance()
 
-        # (
-        self.printTag(token)
-        
-        token = tkz.advance()
-        if token != ')':
-            self.compileExpressionList(token)
-            
-        # )
-        self.printTag(token)
-        
-        print('</subroutineCall>\n\t')
-        self.outF.write('</subroutineCall>\n\t')
+    #    # (
+    #    self.printTag(token)
+    #    
+    #    token = self.tkz.advance()
+    #    if token != ')':
+    #        self.compileExpressionList(token)
+    #        
+    #    # )
+    #    self.printTag(token)
+    #    
+    #    print('</subroutineCall>\n\t')
+    #    self.outF.write('</subroutineCall>\n\t')
 
     def compileExpressionList(self,token):
         print('<expressionList>\n\t')
         self.outF.write('<expressionList>\n\t')
-
-        # 1st expression
-        self.compileExpression(token)
-
-        token = tkz.advance()
-
-        while token != ')':
-            # ,
-            self.printTag(token)
-
-            token = tkz.advance()
-            # expression
+    
+        if token != ')':
+            # 1st expression
             self.compileExpression(token)
 
-            token = tkz.advance()
+            token = self.tkz.advance()
 
-        tkz.backward()
+            while token != ')':
+                # ,
+                self.printTag(token)
+
+                token = self.tkz.advance()
+                # expression
+                self.compileExpression(token)
+
+                token = self.tkz.advance()
+
+        self.tkz.backward()
         
         print('</expressionList>\n\t')
         self.outF.write('</expressionList>\n\t')
@@ -421,13 +486,23 @@ class CompilationEngine:
         print('<expression>\n\t')
         self.outF.write('<expression>\n\t')
 
-        # continue from here
+        self.compileTerm(token)
         
         print('</expression>\n\t')
         self.outF.write('</expression>\n\t')
 
+    def compileTerm(self,token):
+        print('<term>\n\t')
+        self.outF.write('<term>\n\t')
+
+        # terms
+        self.printTag(token)
+        
+        print('</term>\n\t')
+        self.outF.write('</term>\n\t')
+
     def printTag(self,token):
-        tType = tkz.tokenType()
+        tType = self.tkz.tokenType()
         print('<'+tType+'>')
         self.outF.write('<'+tType+'>')
         print(' ' + token + ' ')
