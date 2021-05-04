@@ -2,6 +2,7 @@ class CompilationEngine:
     def __init__(self, tokenizer, path):
         self.outF = open(path+'Out.xml','w')
         self.tkz = tokenizer
+        self.ops = ['+','-','*','/','|','=']+['&lt;', '&gt;', '&amp;']
         self.compileClass()
 
     def compileClass(self):
@@ -220,8 +221,8 @@ class CompilationEngine:
             token = self.tkz.advance()
             # ]
             self.printTag(token)
+            token = self.tkz.advance()
 
-        #token = self.tkz.advance()
         # =
         self.printTag(token)
 
@@ -487,6 +488,19 @@ class CompilationEngine:
         self.outF.write('<expression>\n\t')
 
         self.compileTerm(token)
+
+        token = self.tkz.advance()
+        while (token in self.ops):
+            # op
+            self.printTag(token)
+            
+            token = self.tkz.advance()
+            # term
+            self.compileTerm(token)
+
+            token = self.tkz.advance()
+    
+        self.tkz.backward()
         
         print('</expression>\n\t')
         self.outF.write('</expression>\n\t')
@@ -495,14 +509,74 @@ class CompilationEngine:
         print('<term>\n\t')
         self.outF.write('<term>\n\t')
 
-        # terms
-        self.printTag(token)
+        if token == '(':
+            # (
+            self.printTag(token)
+
+            token = self.tkz.advance()
+            # expression
+            self.compileExpression(token)
+
+            token = self.tkz.advance()
+            # )
+            self.printTag(token)
+        elif token in ['-','~']:
+            # ['-','~']
+            self.printTag(token)
+
+            token = self.tkz.advance()
+            # term
+            self.compileTerm(token)
+        else:
+            # terms
+            self.printTag(token)
+
+            token = self.tkz.advance()
+            if token == '[':
+                # [
+                self.printTag(token)
+
+                token = self.tkz.advance()
+                # expression
+                self.compileExpression(token)
+
+                token = self.tkz.advance()
+                # ]
+                self.printTag(token)
+            elif token == '(' or token == '.':
+                # subroutineName | className | varName
+                #self.printTag(token)
+
+                #token = self.tkz.advance()
+                if token == '.':
+                    # .
+                    self.printTag(token)
+
+                    token = self.tkz.advance()
+                    # subroutineName
+                    self.printTag(token)
+                    token = self.tkz.advance()
+
+                # (
+                self.printTag(token)
+                
+                token = self.tkz.advance()
+                #if token != ')':
+                self.compileExpressionList(token)
+                    
+                token = self.tkz.advance()
+                # )
+                self.printTag(token)
+            else:
+                self.tkz.backward()
         
         print('</term>\n\t')
         self.outF.write('</term>\n\t')
 
     def printTag(self,token):
         tType = self.tkz.tokenType()
+        if token.startswith('"'):
+            token = token[1:-1]
         print('<'+tType+'>')
         self.outF.write('<'+tType+'>')
         print(' ' + token + ' ')

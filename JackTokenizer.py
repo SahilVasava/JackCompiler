@@ -23,8 +23,8 @@ class JackTokenizer:
 
     def backward(self):
         self.currentTokenIndex = self.currentTokenIndex - 1
-        self.currenToken = self.tokens[self.currentTokenIndex]
         if (self.currentTokenIndex < len(self.tokens)) and (self.currentTokenIndex >= 0):
+            self.currenToken = self.tokens[self.currentTokenIndex]
             return self.currentToken 
         else:
             return None
@@ -83,11 +83,12 @@ class JackTokenizer:
                         else:
                             token += ch
                             self.outFile.write('<'+self.tokenType(token) +'>'+ token[1:-1] + '</' +self.tokenType(token) +'>\n')
-                            self.tokens.append(token[1:-1])
+                            #self.tokens.append(token[1:-1])
+                            self.tokens.append(token)
                             #print(self.tokenType(token))
                             #print(token)
                             token = ''
-                    elif ch.strip():
+                    elif ch.strip() or stringC:
                         token += ch
                     elif not stringC:
                         if token.strip():
