@@ -5,12 +5,14 @@ import os
 
 from JackTokenizer import JackTokenizer
 from CompilationEngine import CompilationEngine as Parser
+from SymbolTable import SymbolTable
 
 def parseFile(path):
     jFile = open(path, 'r')
     path, _ = os.path.splitext(path) 
     tokenizer = JackTokenizer(jFile)       
-    parser = Parser(tokenizer, path)
+    symTab = SymbolTable()
+    parser = Parser(tokenizer, path, symTab)
     jFile.close()
 
 def main():

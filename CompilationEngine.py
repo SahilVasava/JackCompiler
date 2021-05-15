@@ -1,6 +1,7 @@
 class CompilationEngine:
-    def __init__(self, tokenizer, path):
-        self.outF = open(path+'Out.xml','w')
+    def __init__(self, tokenizer, path, symTab):
+        self.outF = open(path+'Out_ExtraTags.xml','w')
+        self.st = symTab
         self.tkz = tokenizer
         self.ops = ['+','-','*','/','|','=']+['&lt;', '&gt;', '&amp;']
         self.compileClass()
@@ -10,11 +11,21 @@ class CompilationEngine:
         print('<class>\n\t')
         self.outF.write('<class>\n\t')
         print(f'Token: {token}')
+
+        # class
         self.printTag(token)
+
+        # className
         token = self.tkz.advance()
         self.printTag(token)
+
+        self.printTag('class', 'identifierCat')
+        self.printTag('defined', 'identifierDef')
+
+        # {
         token = self.tkz.advance()
         self.printTag(token)
+
         token = self.tkz.advance()
         while token == 'static' or token == 'field':
             self.compileClassVarDec(token)
@@ -31,17 +42,50 @@ class CompilationEngine:
     def compileClassVarDec(self,token):
         print('<classVarDec>\n\t')
         self.outF.write('<classVarDec>\n\t')
+
+        # (TODO) Create a tag for index 
+
+        # static | field
         self.printTag(token)
+        kindToken = token.upper()
+
         token = self.tkz.advance()
+        # type
         self.printTag(token)
+        typeToken = token 
+
+        if typeToken not in ['int', 'char', 'boolean']:
+            self.printTag('class', 'identifierCat')
+            self.printTag('used', 'identifierDef')
+
         token = self.tkz.advance()
+        # varName
         self.printTag(token)
+        nameToken = token
+        self.printTag(kindToken, 'identifierCat')
+        self.st.define(nameToken, typeToken, kindToken)
+        indexToken = self.st.indexOf(nameToken)
+        self.printTag(indexToken, 'identifierInd')
+        self.printTag('defined', 'identifierDef')
+        
+
         token = self.tkz.advance()
+        # check if it is ,
         while token == ',':
+            # ,
             self.printTag(token)
+            # varName
             token = self.tkz.advance()
             self.printTag(token)
+            nameToken = token
+
+            self.printTag(typeToken, 'identifierCat')
+            self.st.define(nameToken, typeToken, kindToken)
+            indexToken = self.st.indexOf(nameToken)
+            self.printTag(indexToken, 'identifierInd')
+            self.printTag('defined', 'identifierDef')
             token = self.tkz.advance()
+
         self.printTag(token)
         print('</classVarDec>')
         self.outF.write('</classVarDec>\n\t')
@@ -49,16 +93,24 @@ class CompilationEngine:
     def compileSubroutineDec(self,token):
         print('<subroutineDec>\n\t')
         self.outF.write('<subroutineDec>\n\t')
+
         # constuctor | function | method
         self.printTag(token)
 
         token = self.tkz.advance()
         # void | type
         self.printTag(token)
+        typeToken = token
+
+        if typeToken not in ['int', 'char', 'boolean', 'void']:
+            self.printTag('class', 'identifierCat')
+            self.printTag('used', 'identifierDef')
 
         token = self.tkz.advance()
         # subroutineName
         self.printTag(token)
+        self.printTag('subroutine', 'identifierCat')
+        self.printTag('defined', 'identifierDef')
 
         token = self.tkz.advance()
         # (
@@ -67,6 +119,8 @@ class CompilationEngine:
         token = self.tkz.advance()
         #while token != ')':
             # parameterList
+
+        # (TODO) if we have args then create the corr tags inc index
         self.compileParamterList(token)
         token = self.tkz.advance()
 
@@ -84,12 +138,25 @@ class CompilationEngine:
         print('<parameterList>\n\t')
         self.outF.write('<parameterList>\n\t')
         if token != ')':
+
+            kindToken = 'ARG'
             # type
             self.printTag(token) 
+            typeToken = token
+
+            if typeToken not in ['int', 'char', 'boolean']:
+                self.printTag('class', 'identifierCat')
+                self.printTag('used', 'identifierDef')
 
             token = self.tkz.advance()
             # varName
             self.printTag(token)
+            nameToken = token
+            self.printTag(kindToken, 'identifierCat')
+            self.st.define(nameToken, typeToken, kindToken)
+            indexToken = self.st.indexOf(nameToken)
+            self.printTag(indexToken, 'identifierInd')
+            self.printTag('defined', 'identifierDef')
 
             token = self.tkz.advance()
             # , type varName
@@ -100,10 +167,22 @@ class CompilationEngine:
                 token = self.tkz.advance()
                 # type
                 self.printTag(token)
+                typeToken = token
+
+                if typeToken not in ['int', 'char', 'boolean']:
+                    self.printTag('class', 'identifierCat')
+                    self.printTag('used', 'identifierDef')
 
                 token = self.tkz.advance()
                 # varName
                 self.printTag(token)
+                nameToken = token
+                self.printTag(kindToken, 'identifierCat')
+                self.st.define(nameToken, typeToken, kindToken)
+                indexToken = self.st.indexOf(nameToken)
+                self.printTag(indexToken, 'identifierInd')
+                self.printTag('defined', 'identifierDef')
+
                 token = self.tkz.advance()
         self.tkz.backward()    
         print('</parameterList>\n\t')
@@ -172,14 +251,27 @@ class CompilationEngine:
 
         # var
         self.printTag(token) 
+        kindToken = token.upper()
 
         token = self.tkz.advance()
         # type
         self.printTag(token)
+        typeToken = token
+
+        if typeToken not in ['int', 'char', 'boolean']:
+            self.printTag('class', 'identifierCat')
+            self.printTag('used', 'identifierDef')
 
         token = self.tkz.advance()
         # varName
         self.printTag(token)
+        nameToken = token
+        self.printTag(kindToken, 'identifierCat')
+        self.st.define(nameToken, typeToken, kindToken)
+        indexToken = self.st.indexOf(nameToken)
+        print(f'INDEX TOKEN: {indexToken}')
+        self.printTag(indexToken, 'identifierInd')
+        self.printTag('defined', 'identifierDef')
 
         token = self.tkz.advance()
         # , varName
@@ -190,6 +282,13 @@ class CompilationEngine:
             token = self.tkz.advance()
             # varName
             self.printTag(token)
+            nameToken = token
+            self.printTag(kindToken, 'identifierCat')
+            self.st.define(nameToken, typeToken, kindToken)
+            indexToken = self.st.indexOf(nameToken)
+            self.printTag(indexToken, 'identifierInd')
+            self.printTag('defined', 'identifierDef')
+
             token = self.tkz.advance()
 
         # }
@@ -208,6 +307,16 @@ class CompilationEngine:
         token = self.tkz.advance()
         # varName
         self.printTag(token)
+        nameToken = token
+
+        kindToken = self.st.kindOf(nameToken)
+        print(f'KIND {kindToken} name {nameToken}')
+        self.printTag(kindToken, 'identifierCat')
+
+        #self.st.define(nameToken, typeToken, kindToken)
+        indexToken = self.st.indexOf(nameToken)
+        self.printTag(indexToken, 'identifierInd')
+        self.printTag('used', 'identifierDef')
 
         token = self.tkz.advance()
         # [
@@ -380,6 +489,21 @@ class CompilationEngine:
 
         # subroutineName | className | varName
         self.printTag(token)
+        nameToken = token
+        kindToken = self.st.kindOf(nameToken)
+        if not kindToken:
+            tok = self.tkz.advance()
+            self.tkz.backward()
+            if tok == '.':
+                self.printTag('class', 'identifierCat')
+            else:
+                self.printTag('subroutine', 'identifierCat')
+        else:
+            self.printTag(kindToken, 'identifierCat')
+            indexToken = self.st.indexOf(nameToken)
+            self.printTag(indexToken, 'identifierInd')
+
+        self.printTag('used', 'identifierDef')
 
         token = self.tkz.advance()
         if token == '.':
@@ -389,6 +513,10 @@ class CompilationEngine:
             token = self.tkz.advance()
             # subroutineName
             self.printTag(token)
+
+            self.printTag('subroutine', 'identifierCat')
+            self.printTag('used', 'identifierDef')
+
             token = self.tkz.advance()
 
         # (
@@ -530,6 +658,22 @@ class CompilationEngine:
         else:
             # terms
             self.printTag(token)
+            if self.tkz.tokenType() == 'identifier':
+                nameToken = token
+                kindToken = self.st.kindOf(nameToken)
+                if not kindToken:
+                    tok = self.tkz.advance()
+                    self.tkz.backward()
+                    if tok == '.':
+                        self.printTag('class', 'identifierCat')
+                    else:
+                        self.printTag('subroutine', 'identifierCat')
+                else:
+                    self.printTag(kindToken, 'identifierCat')
+                    indexToken = self.st.indexOf(nameToken)
+                    self.printTag(indexToken, 'identifierInd')
+
+                self.printTag('used', 'identifierDef')
 
             token = self.tkz.advance()
             if token == '[':
@@ -555,6 +699,8 @@ class CompilationEngine:
                     token = self.tkz.advance()
                     # subroutineName
                     self.printTag(token)
+                    self.printTag('subroutine', 'identifierCat')
+                    self.printTag('used', 'identifierDef')
                     token = self.tkz.advance()
 
                 # (
@@ -573,8 +719,9 @@ class CompilationEngine:
         print('</term>\n\t')
         self.outF.write('</term>\n\t')
 
-    def printTag(self,token):
-        tType = self.tkz.tokenType()
+    def printTag(self,token,tType=None):
+        if tType == None:
+            tType = self.tkz.tokenType()
         if token.startswith('"'):
             token = token[1:-1]
         print('<'+tType+'>')
