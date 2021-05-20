@@ -1,6 +1,9 @@
+from VMWriter import VMWriter
+
 class CompilationEngine:
     def __init__(self, tokenizer, path, symTab):
         self.outF = open(path+'Out_ExtraTags.xml','w')
+        self.vmw = VMWriter(path)
         self.st = symTab
         self.tkz = tokenizer
         self.ops = ['+','-','*','/','|','=']+['&lt;', '&gt;', '&amp;']
@@ -661,6 +664,7 @@ class CompilationEngine:
             if self.tkz.tokenType() == 'identifier':
                 nameToken = token
                 kindToken = self.st.kindOf(nameToken)
+                # cat of token is class or subroutine
                 if not kindToken:
                     tok = self.tkz.advance()
                     self.tkz.backward()
@@ -668,10 +672,22 @@ class CompilationEngine:
                         self.printTag('class', 'identifierCat')
                     else:
                         self.printTag('subroutine', 'identifierCat')
+                # cat of token is var, arg, static or field
                 else:
                     self.printTag(kindToken, 'identifierCat')
                     indexToken = self.st.indexOf(nameToken)
                     self.printTag(indexToken, 'identifierInd')
+
+                    # vm code writer
+                    if kindToken == 'STATIC':
+                        self.vmw.writePush(kindToken.lower(), indexToken) 
+                    elif kindToken == 'FIELD':
+                        self.vmw.writePush('this', indexToken) 
+                    elif kindToken == 'ARG':
+                        self.vmw.writePush('argument', indexToken) 
+                    elif kindToken == 'VAR':
+                        self.vmw.writePush('local', indexToken) 
+
 
                 self.printTag('used', 'identifierDef')
 
