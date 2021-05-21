@@ -1,7 +1,11 @@
 from VMWriter import VMWriter
+import os
 
 class CompilationEngine:
     def __init__(self, tokenizer, path, symTab):
+        self.fileName = os.path.basename(path)
+        self.ifInd = 1
+        self.whileInd = 1
         self.outF = open(path+'Out_ExtraTags.xml','w')
         self.vmw = VMWriter(path)
         self.st = symTab
@@ -364,6 +368,14 @@ class CompilationEngine:
         # expression
         self.compileExpression(token)
 
+        # write the not of exp
+        self.vmw.writeArithmetic('NOT')
+
+        # write if-goto label(else case label)
+        l1 = {self.fileName}_if_l{self.ifInd}
+        self.ifInd += 1
+        self.vmw.writeIf(l1)
+
         token = self.tkz.advance()
         # )
         self.printTag(token)
@@ -374,8 +386,8 @@ class CompilationEngine:
 
         token = self.tkz.advance()
 
-        #if token != '}':
-        self.compileStatements(token)
+        if token != '}':
+            self.compileStatements(token)
 
         #while token != '}':
         #    if token == 'let':
@@ -394,7 +406,14 @@ class CompilationEngine:
         # }
         self.printTag(token)
         
+        # write goto l2
+        l2 = {self.fileName}_if_l{self.ifInd}
+        self.ifInd += 1 
+        self.vmw.writeGoto(l2)
         
+        # write label l1(else case label)
+        self.vmw.writeLabel(l1)
+
         token = self.tkz.advance()
         # else
         if token == 'else':
@@ -427,6 +446,9 @@ class CompilationEngine:
             self.printTag(token)
         else:
             self.tkz.backward()
+
+        # write label l2(else case label)
+        self.vmw.writeLabel(l2)
  
         print('</ifStatement>\n\t')
         self.outF.write('</ifStatement>\n\t')
@@ -438,6 +460,11 @@ class CompilationEngine:
         # while
         self.printTag(token)
 
+        # write label l1
+        l1 = {self.fileName}_while_{self.whileInd}
+        self.whileInd += 1 
+        self.vmw.writeLabel(l1)
+
         token = self.tkz.advance()
         # (
         self.printTag(token)
@@ -445,6 +472,14 @@ class CompilationEngine:
         token = self.tkz.advance()
         # expression
         self.compileExpression(token)
+
+        # write the not of exp
+        self.vmw.writeArithmetic('NOT')
+
+        # write if-goto label(else case label)
+        l2 = {self.fileName}_while_{self.whileInd}
+        self.whileInd += 1 
+        self.vmw.writeIf(l2)
 
         token = self.tkz.advance()
         # )
@@ -474,6 +509,12 @@ class CompilationEngine:
         token = self.tkz.advance()
         # }
         self.printTag(token)
+
+        # write goto l1
+        self.vmw.writeGoto(l1)
+
+        # write label l2
+        self.vmw.writeLabel(l2)
         
         print('</whileStatement>\n\t')
         self.outF.write('</whileStatement>\n\t')
@@ -614,6 +655,28 @@ class CompilationEngine:
         print('</expressionList>\n\t')
         self.outF.write('</expressionList>\n\t')
 
+    #def compileExpression(self,token):
+    #    print('<expression>\n\t')
+    #    self.outF.write('<expression>\n\t')
+
+    #    self.compileTerm(token)
+
+    #    token = self.tkz.advance()
+    #    while (token in self.ops):
+    #        # op
+    #        self.printTag(token)
+    #        
+    #        token = self.tkz.advance()
+    #        # term
+    #        self.compileTerm(token)
+
+    #        token = self.tkz.advance()
+    #
+    #    self.tkz.backward()
+    #    
+    #    print('</expression>\n\t')
+    #    self.outF.write('</expression>\n\t')
+
     def compileExpression(self,token):
         print('<expression>\n\t')
         self.outF.write('<expression>\n\t')
@@ -623,11 +686,29 @@ class CompilationEngine:
         token = self.tkz.advance()
         while (token in self.ops):
             # op
+            opToken = token
             self.printTag(token)
             
             token = self.tkz.advance()
             # term
             self.compileTerm(token)
+
+            # write op vm code
+            if opToken == '+':
+                self.vmw.writeArithmetic('ADD')
+            elif opToken == '-':
+                self.vmw.writeArithmetic('SUB')
+            elif opToken == '&':
+                self.vmw.writeArithmetic('AND')
+            elif opToken == '|':
+                self.vmw.writeArithmetic('OR')
+            elif opToken == '<':
+                self.vmw.writeArithmetic('LT')
+            elif opToken == '>':
+                self.vmw.writeArithmetic('GT')
+            elif opToken == '=':
+                self.vmw.writeArithmetic('EQ')
+
 
             token = self.tkz.advance()
     
@@ -654,10 +735,15 @@ class CompilationEngine:
         elif token in ['-','~']:
             # ['-','~']
             self.printTag(token)
+            uopToken = token
 
             token = self.tkz.advance()
             # term
             self.compileTerm(token)
+            if uopToken == '-':
+                self.vmw.writeArithmetic('NEG')
+            elif uopToken == '~':
+                self.vmw.writeArithmetic('NOT')
         else:
             # terms
             self.printTag(token)
@@ -688,8 +774,10 @@ class CompilationEngine:
                     elif kindToken == 'VAR':
                         self.vmw.writePush('local', indexToken) 
 
-
                 self.printTag('used', 'identifierDef')
+            # token is integerConstant
+            elif self.tkz.tokenType() == 'integerConstant':
+                self.vmw.writePush('CONST', token) 
 
             token = self.tkz.advance()
             if token == '[':
@@ -729,6 +817,10 @@ class CompilationEngine:
                 token = self.tkz.advance()
                 # )
                 self.printTag(token)
+
+                # (TODO) write the code for calling subR
+                # write vm code for 'call subR|className.subR|varName.subR
+                #self.vmw.writeCall(
             else:
                 self.tkz.backward()
         
