@@ -36,7 +36,7 @@ class VMWriter:
 
     def writeReturn(self):
 
-        self.outF.write(f'return')
+        self.outF.write(f'return\n')
 
     def close(self):
 

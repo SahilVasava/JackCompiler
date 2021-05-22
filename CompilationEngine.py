@@ -2,12 +2,13 @@ from VMWriter import VMWriter
 import os
 
 class CompilationEngine:
-    def __init__(self, tokenizer, path, symTab):
+    def __init__(self, tokenizer, path, symTab, vmw):
         self.fileName = os.path.basename(path)
         self.ifInd = 1
         self.whileInd = 1
+        self.nFieldVar = 0
         self.outF = open(path+'Out_ExtraTags.xml','w')
-        self.vmw = VMWriter(path)
+        self.vmw = vmw
         self.st = symTab
         self.tkz = tokenizer
         self.ops = ['+','-','*','/','|','=']+['&lt;', '&gt;', '&amp;']
@@ -17,7 +18,7 @@ class CompilationEngine:
         token = self.tkz.advance()
         print('<class>\n\t')
         self.outF.write('<class>\n\t')
-        print(f'Token: {token}')
+        #print(f'Token: {token}')
 
         # class
         self.printTag(token)
@@ -50,7 +51,6 @@ class CompilationEngine:
         print('<classVarDec>\n\t')
         self.outF.write('<classVarDec>\n\t')
 
-        # (TODO) Create a tag for index 
 
         # static | field
         self.printTag(token)
@@ -68,6 +68,8 @@ class CompilationEngine:
         token = self.tkz.advance()
         # varName
         self.printTag(token)
+        if kindToken == 'field':
+            self.nFieldVar += 1
         nameToken = token
         self.printTag(kindToken, 'identifierCat')
         self.st.define(nameToken, typeToken, kindToken)
@@ -84,6 +86,8 @@ class CompilationEngine:
             # varName
             token = self.tkz.advance()
             self.printTag(token)
+            if kindToken == 'field':
+                self.nFieldVar += 1
             nameToken = token
 
             self.printTag(typeToken, 'identifierCat')
@@ -101,13 +105,28 @@ class CompilationEngine:
         print('<subroutineDec>\n\t')
         self.outF.write('<subroutineDec>\n\t')
 
-        # constuctor | function | method
+
+        # constructor | function | method
         self.printTag(token)
+        subRType = token
+
+        # start subroutine symbol table
+        self.st.startSubroutine(subRType)
 
         token = self.tkz.advance()
         # void | type
         self.printTag(token)
         typeToken = token
+
+        # append this in the symbol table if subR is a constructor
+        if subRType == 'constructor':
+            self.st.define('this', typeToken, 'ARG')
+            self.vmw.writePush('constant', nFieldVar)
+            self.vmw.writeCall('Memory.alloc', '1')
+            self.vmw.writePop('pointer', '0')
+        elif subRType == 'method':
+            self.vmw.writePush('argument', '0')
+            self.vmw.writePop('pointer', '0')
 
         if typeToken not in ['int', 'char', 'boolean', 'void']:
             self.printTag('class', 'identifierCat')
@@ -116,8 +135,13 @@ class CompilationEngine:
         token = self.tkz.advance()
         # subroutineName
         self.printTag(token)
+        subName = token
         self.printTag('subroutine', 'identifierCat')
         self.printTag('defined', 'identifierDef')
+
+        # (TODO)
+        # write the vm code 'function filename.subName nLocalVars'
+        #self.vmw.write
 
         token = self.tkz.advance()
         # (
@@ -127,8 +151,7 @@ class CompilationEngine:
         #while token != ')':
             # parameterList
 
-        # (TODO) if we have args then create the corr tags inc index
-        self.compileParamterList(token)
+        self.compileParameterList(token)
         token = self.tkz.advance()
 
         # )
@@ -141,7 +164,7 @@ class CompilationEngine:
         print('</subroutineDec>\n\t')
         self.outF.write('</subroutineDec>\n\t')
             
-    def compileParamterList(self,token):
+    def compileParameterList(self,token):
         print('<parameterList>\n\t')
         self.outF.write('<parameterList>\n\t')
         if token != ')':
@@ -258,7 +281,7 @@ class CompilationEngine:
 
         # var
         self.printTag(token) 
-        kindToken = token.upper()
+        kindToken = 'LOCAL'
 
         token = self.tkz.advance()
         # type
@@ -326,6 +349,7 @@ class CompilationEngine:
         self.printTag('used', 'identifierDef')
 
         token = self.tkz.advance()
+        arr = False
         # [
         if token == '[':
             self.printTag(token)
@@ -338,6 +362,7 @@ class CompilationEngine:
             # ]
             self.printTag(token)
             token = self.tkz.advance()
+            arr = True
 
         # =
         self.printTag(token)
@@ -345,6 +370,19 @@ class CompilationEngine:
         token = self.tkz.advance()
         # expression
         self.compileExpression(token)
+        
+        if not arr:
+            segment = self.st.kindOf(nameToken)
+            index = self.st.indexOf(nameToken)
+            print(f'segmentttt {segment} {index}')
+            if segment == 'STATIC':
+                self.vmw.writePop('static', index)
+            elif segment == 'FIELD':
+                self.vmw.writePop('this', index)
+            elif segment == 'ARG':
+                self.vmw.writePop('argument', index)
+            elif segment == 'LOCAL':
+                self.vmw.writePop('local', index)
 
         token = self.tkz.advance()
         # ;
@@ -372,7 +410,7 @@ class CompilationEngine:
         self.vmw.writeArithmetic('NOT')
 
         # write if-goto label(else case label)
-        l1 = {self.fileName}_if_l{self.ifInd}
+        l1 = f'{self.fileName}_if_l{self.ifInd}'
         self.ifInd += 1
         self.vmw.writeIf(l1)
 
@@ -407,7 +445,7 @@ class CompilationEngine:
         self.printTag(token)
         
         # write goto l2
-        l2 = {self.fileName}_if_l{self.ifInd}
+        l2 = f'{self.fileName}_if_l{self.ifInd}'
         self.ifInd += 1 
         self.vmw.writeGoto(l2)
         
@@ -461,7 +499,7 @@ class CompilationEngine:
         self.printTag(token)
 
         # write label l1
-        l1 = {self.fileName}_while_{self.whileInd}
+        l1 = f'{self.fileName}_while_{self.whileInd}'
         self.whileInd += 1 
         self.vmw.writeLabel(l1)
 
@@ -477,7 +515,7 @@ class CompilationEngine:
         self.vmw.writeArithmetic('NOT')
 
         # write if-goto label(else case label)
-        l2 = {self.fileName}_while_{self.whileInd}
+        l2 = f'{self.fileName}_while_{self.whileInd}'
         self.whileInd += 1 
         self.vmw.writeIf(l2)
 
@@ -522,6 +560,8 @@ class CompilationEngine:
     def compileDoStatement(self,token):
         print('<doStatement>\n\t')
         self.outF.write('<doStatement>\n\t')
+        subName = ''
+        nArgs = 0
         
         # do
         self.printTag(token)
@@ -535,17 +575,36 @@ class CompilationEngine:
         self.printTag(token)
         nameToken = token
         kindToken = self.st.kindOf(nameToken)
+
+        # check if the subCall is of type varName.subR
+        tok = self.tkz.advance()
+        self.tkz.backward()
+        if kindToken and tok == '.':
+            nArgs += 1
+
+        # cat of token is class or subroutine
         if not kindToken:
-            tok = self.tkz.advance()
-            self.tkz.backward()
             if tok == '.':
                 self.printTag('class', 'identifierCat')
+                subName = nameToken+'.'
             else:
                 self.printTag('subroutine', 'identifierCat')
+                subName = nameToken
+        # cat of token is var, arg, static or field
         else:
             self.printTag(kindToken, 'identifierCat')
             indexToken = self.st.indexOf(nameToken)
             self.printTag(indexToken, 'identifierInd')
+
+            # vm code writer
+            if kindToken == 'STATIC':
+                self.vmw.writePush(kindToken.lower(), indexToken) 
+            elif kindToken == 'FIELD':
+                self.vmw.writePush('this', indexToken) 
+            elif kindToken == 'ARG':
+                self.vmw.writePush('argument', indexToken) 
+            elif kindToken == 'LOCAL':
+                self.vmw.writePush('local', indexToken) 
 
         self.printTag('used', 'identifierDef')
 
@@ -557,6 +616,7 @@ class CompilationEngine:
             token = self.tkz.advance()
             # subroutineName
             self.printTag(token)
+            subName += token
 
             self.printTag('subroutine', 'identifierCat')
             self.printTag('used', 'identifierDef')
@@ -568,11 +628,15 @@ class CompilationEngine:
         
         token = self.tkz.advance()
         #if token != ')':
-        self.compileExpressionList(token)
+        nArgs = self.compileExpressionList(token)
             
         token = self.tkz.advance()
         # )
         self.printTag(token)
+
+        # write vm code for 'call subR|className.subR|varName.subR
+        self.vmw.writeCall(subName, nArgs)
+        self.vmw.writePop('temp', '0')
 
         token = self.tkz.advance()
         # ;
@@ -585,6 +649,7 @@ class CompilationEngine:
         print('<returnStatement>\n\t')
         self.outF.write('<returnStatement>\n\t')
         
+        voidType = True
         # return
         self.printTag(token)
 
@@ -593,9 +658,19 @@ class CompilationEngine:
             # expression
             self.compileExpression(token)
             token = self.tkz.advance()
+            voidType = False
 
         # ;
         self.printTag(token)
+
+        #print('thissssss '+self.st.kindOf('this'))
+        if self.st.getSubRType() == 'constructor':
+            self.vmw.writePush('pointer', '0')
+        elif not voidType:
+            self.vmw.writePush('constant', '0')
+        
+        # write vm code 'return'
+        self.vmw.writeReturn()
 
         print('</returnStatement>\n\t')
         self.outF.write('</returnStatement>\n\t')
@@ -633,10 +708,12 @@ class CompilationEngine:
     def compileExpressionList(self,token):
         print('<expressionList>\n\t')
         self.outF.write('<expressionList>\n\t')
+        nArgs = 0
     
         if token != ')':
             # 1st expression
             self.compileExpression(token)
+            nArgs += 1
 
             token = self.tkz.advance()
 
@@ -647,6 +724,7 @@ class CompilationEngine:
                 token = self.tkz.advance()
                 # expression
                 self.compileExpression(token)
+                nArgs += 1
 
                 token = self.tkz.advance()
 
@@ -654,6 +732,7 @@ class CompilationEngine:
         
         print('</expressionList>\n\t')
         self.outF.write('</expressionList>\n\t')
+        return nArgs
 
     #def compileExpression(self,token):
     #    print('<expression>\n\t')
@@ -695,19 +774,23 @@ class CompilationEngine:
 
             # write op vm code
             if opToken == '+':
-                self.vmw.writeArithmetic('ADD')
+                self.vmw.writeArithmetic('add')
             elif opToken == '-':
-                self.vmw.writeArithmetic('SUB')
+                self.vmw.writeArithmetic('sub')
             elif opToken == '&':
-                self.vmw.writeArithmetic('AND')
+                self.vmw.writeArithmetic('and')
             elif opToken == '|':
-                self.vmw.writeArithmetic('OR')
+                self.vmw.writeArithmetic('or')
             elif opToken == '<':
-                self.vmw.writeArithmetic('LT')
+                self.vmw.writeArithmetic('lt')
             elif opToken == '>':
-                self.vmw.writeArithmetic('GT')
+                self.vmw.writeArithmetic('gt')
             elif opToken == '=':
-                self.vmw.writeArithmetic('EQ')
+                self.vmw.writeArithmetic('eq')
+            elif opToken == '*':
+                self.vmw.writeCall('Math.multiply', '2')
+            elif opToken == '/':
+                self.vmw.writeCall('Math.divide', '2')
 
 
             token = self.tkz.advance()
@@ -720,6 +803,8 @@ class CompilationEngine:
     def compileTerm(self,token):
         print('<term>\n\t')
         self.outF.write('<term>\n\t')
+        subName = ''
+        nArgs = 0
 
         if token == '(':
             # (
@@ -750,14 +835,21 @@ class CompilationEngine:
             if self.tkz.tokenType() == 'identifier':
                 nameToken = token
                 kindToken = self.st.kindOf(nameToken)
+                
+                # check if the subCall is of type varName.subR
+                tok = self.tkz.advance()
+                self.tkz.backward()
+                if kindToken and tok == '.':
+                    nArgs += 1
+
                 # cat of token is class or subroutine
                 if not kindToken:
-                    tok = self.tkz.advance()
-                    self.tkz.backward()
                     if tok == '.':
                         self.printTag('class', 'identifierCat')
+                        subName = nameToken+'.'
                     else:
                         self.printTag('subroutine', 'identifierCat')
+                        subName = nameToken
                 # cat of token is var, arg, static or field
                 else:
                     self.printTag(kindToken, 'identifierCat')
@@ -771,13 +863,23 @@ class CompilationEngine:
                         self.vmw.writePush('this', indexToken) 
                     elif kindToken == 'ARG':
                         self.vmw.writePush('argument', indexToken) 
-                    elif kindToken == 'VAR':
+                    elif kindToken == 'LOCAL':
                         self.vmw.writePush('local', indexToken) 
 
                 self.printTag('used', 'identifierDef')
             # token is integerConstant
             elif self.tkz.tokenType() == 'integerConstant':
-                self.vmw.writePush('CONST', token) 
+                self.vmw.writePush('constant', token) 
+
+            # token is keywordConstant
+            elif self.tkz.tokenType() == 'keyword':
+                if token == 'true':
+                    self.vmw.writePush('constant','-1')
+                elif token in ['false','null']:
+                    self.vmw.writePush('constant','0')
+                else:
+                    self.vmw.writePush('argument','0')
+
 
             token = self.tkz.advance()
             if token == '[':
@@ -803,6 +905,7 @@ class CompilationEngine:
                     token = self.tkz.advance()
                     # subroutineName
                     self.printTag(token)
+                    subName += token
                     self.printTag('subroutine', 'identifierCat')
                     self.printTag('used', 'identifierDef')
                     token = self.tkz.advance()
@@ -812,15 +915,14 @@ class CompilationEngine:
                 
                 token = self.tkz.advance()
                 #if token != ')':
-                self.compileExpressionList(token)
+                nArgs = self.compileExpressionList(token)
                     
                 token = self.tkz.advance()
                 # )
                 self.printTag(token)
 
-                # (TODO) write the code for calling subR
                 # write vm code for 'call subR|className.subR|varName.subR
-                #self.vmw.writeCall(
+                self.vmw.writeCall(subName, nArgs)
             else:
                 self.tkz.backward()
         

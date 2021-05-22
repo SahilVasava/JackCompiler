@@ -5,29 +5,51 @@ class SymbolTable:
     def __init__(self):
         self.classST = {}
         self.subST = {}
-        self.cInd = 0
+        self.fInd = 0
         self.sInd = 0
+        self.aInd = 0
+        self.lInd = 0
+        self.currentSubRType = ''
 
-    def startSubroutine(self):
+    def startSubroutine(self, subRType):
         self.subST.clear()
-        self.sInd = 0
+        self.aInd = 0
+        self.lInd = 0
+        self.currentSubRType = subRType
+
+    def getSubRType(self):
+        return self.currentSubRType
 
     def define(self, name, tType, kind):
         print(f'KIND {kind}')
-        if kind in ['STATIC', 'FIELD']:
+        if kind == 'STATIC':
             self.classST[name] =  {
-                        'type' : tType,
-                        'kind' : kind,
-                        'index' : self.cInd
-                    }
-            self.cInd += 1
-        else:
-            self.subST[name] =  {
                         'type' : tType,
                         'kind' : kind,
                         'index' : self.sInd
                     }
             self.sInd += 1
+        elif kind == 'FIELD':
+            self.classST[name] =  {
+                        'type' : tType,
+                        'kind' : kind,
+                        'index' : self.fInd
+                    }
+            self.fInd += 1
+        elif kind == 'ARG':
+            self.subST[name] =  {
+                        'type' : tType,
+                        'kind' : kind,
+                        'index' : self.aInd
+                    }
+            self.aInd += 1
+        elif kind == 'LOCAL':
+            self.subST[name] =  {
+                        'type' : tType,
+                        'kind' : kind,
+                        'index' : self.lInd
+                    }
+            self.lInd += 1
 
     def varCount(self, kind):
         count = 0

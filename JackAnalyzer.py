@@ -6,14 +6,17 @@ import os
 from JackTokenizer import JackTokenizer
 from CompilationEngine import CompilationEngine as Parser
 from SymbolTable import SymbolTable
+from VMWriter import VMWriter
 
 def parseFile(path):
     jFile = open(path, 'r')
     path, _ = os.path.splitext(path) 
     tokenizer = JackTokenizer(jFile)       
     symTab = SymbolTable()
-    parser = Parser(tokenizer, path, symTab)
+    vmw = VMWriter(path)
+    parser = Parser(tokenizer, path, symTab, vmw)
     jFile.close()
+    vmw.close()
 
 def main():
     path = os.path.abspath(sys.argv[1])
