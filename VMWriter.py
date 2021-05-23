@@ -1,6 +1,6 @@
 class VMWriter:
     def __init__(self, path):
-        self.outF = open(path+'Out.vm','w')
+        self.outF = open(path+'.vm','w')
 
     def writePush(self, segment, index):
         
@@ -32,7 +32,7 @@ class VMWriter:
 
     def writeFunction(self, name, nLocals):
 
-        self.outF.write(f'call {name} {nLocals}\n')
+        self.outF.write(f'function {name} {nLocals}\n')
 
     def writeReturn(self):
 

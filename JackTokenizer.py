@@ -55,16 +55,17 @@ class JackTokenizer:
                             self.tokens.append(token)
                             #print(self.tokenType(token))
                             #print(token)
-                        if ch == '<':
-                           token = '&lt;' 
-                        elif ch == '>':
-                           token = '&gt;' 
-                        elif ch == '"':
-                           token = '&quot;' 
-                        elif ch == '&':
-                           token = '&amp;' 
-                        else:
-                            token = ch
+                        #if ch == '<':
+                        #   token = '&lt;' 
+                        #elif ch == '>':
+                        #   token = '&gt;' 
+                        #elif ch == '"':
+                        #   token = '&quot;' 
+                        #elif ch == '&':
+                        #   token = '&amp;' 
+                        #else:
+                        #    token = ch
+                        token = ch
                         self.outFile.write('<'+self.tokenType(token) +'>'+ token + '</' +self.tokenType(token) +'>\n')
                         self.tokens.append(token)
                         #print(self.tokenType(token))

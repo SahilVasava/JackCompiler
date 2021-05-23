@@ -7,11 +7,13 @@ class CompilationEngine:
         self.ifInd = 1
         self.whileInd = 1
         self.nFieldVar = 0
+        self.nLocalVars = 0
+        self.subName = ''
         self.outF = open(path+'Out_ExtraTags.xml','w')
         self.vmw = vmw
         self.st = symTab
         self.tkz = tokenizer
-        self.ops = ['+','-','*','/','|','=']+['&lt;', '&gt;', '&amp;']
+        self.ops = ['+','-','*','/','|','=','<','>','&']+['&lt;', '&gt;', '&amp;']
         self.compileClass()
 
     def compileClass(self):
@@ -135,13 +137,10 @@ class CompilationEngine:
         token = self.tkz.advance()
         # subroutineName
         self.printTag(token)
-        subName = token
+        self.subName = token
         self.printTag('subroutine', 'identifierCat')
         self.printTag('defined', 'identifierDef')
 
-        # (TODO)
-        # write the vm code 'function filename.subName nLocalVars'
-        #self.vmw.write
 
         token = self.tkz.advance()
         # (
@@ -231,6 +230,10 @@ class CompilationEngine:
             self.compileVarDec(token)
             token = self.tkz.advance()
 
+        # write the vm code 'function filename.subName nLocalVars'
+        self.vmw.writeFunction(self.fileName+'.'+self.subName, self.nLocalVars)
+        self.nLocalVars = 0
+
         if token != '}':
             self.compileStatements(token)
 
@@ -295,6 +298,7 @@ class CompilationEngine:
         token = self.tkz.advance()
         # varName
         self.printTag(token)
+        self.nLocalVars += 1
         nameToken = token
         self.printTag(kindToken, 'identifierCat')
         self.st.define(nameToken, typeToken, kindToken)
@@ -312,6 +316,7 @@ class CompilationEngine:
             token = self.tkz.advance()
             # varName
             self.printTag(token)
+            self.nLocalVars += 1
             nameToken = token
             self.printTag(kindToken, 'identifierCat')
             self.st.define(nameToken, typeToken, kindToken)
@@ -407,7 +412,7 @@ class CompilationEngine:
         self.compileExpression(token)
 
         # write the not of exp
-        self.vmw.writeArithmetic('NOT')
+        self.vmw.writeArithmetic('not')
 
         # write if-goto label(else case label)
         l1 = f'{self.fileName}_if_l{self.ifInd}'
@@ -512,7 +517,7 @@ class CompilationEngine:
         self.compileExpression(token)
 
         # write the not of exp
-        self.vmw.writeArithmetic('NOT')
+        self.vmw.writeArithmetic('not')
 
         # write if-goto label(else case label)
         l2 = f'{self.fileName}_while_{self.whileInd}'
@@ -766,6 +771,7 @@ class CompilationEngine:
         while (token in self.ops):
             # op
             opToken = token
+            print(f'optokennnn {opToken}')
             self.printTag(token)
             
             token = self.tkz.advance()
@@ -826,9 +832,9 @@ class CompilationEngine:
             # term
             self.compileTerm(token)
             if uopToken == '-':
-                self.vmw.writeArithmetic('NEG')
+                self.vmw.writeArithmetic('neg')
             elif uopToken == '~':
-                self.vmw.writeArithmetic('NOT')
+                self.vmw.writeArithmetic('not')
         else:
             # terms
             self.printTag(token)
@@ -874,7 +880,8 @@ class CompilationEngine:
             # token is keywordConstant
             elif self.tkz.tokenType() == 'keyword':
                 if token == 'true':
-                    self.vmw.writePush('constant','-1')
+                    self.vmw.writePush('constant','1')
+                    self.vmw.writeArithmetic('neg')
                 elif token in ['false','null']:
                     self.vmw.writePush('constant','0')
                 else:
