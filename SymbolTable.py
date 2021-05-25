@@ -10,15 +10,20 @@ class SymbolTable:
         self.aInd = 0
         self.lInd = 0
         self.currentSubRType = ''
+        self.currentClassType = ''
 
-    def startSubroutine(self, subRType):
+    def startSubroutine(self, subRType, classType):
         self.subST.clear()
         self.aInd = 0
         self.lInd = 0
         self.currentSubRType = subRType
+        self.currentClassType = classType
 
     def getSubRType(self):
         return self.currentSubRType
+
+    def getClassType(self):
+        return self.currentClassType
 
     def define(self, name, tType, kind):
         print(f'KIND {kind}')

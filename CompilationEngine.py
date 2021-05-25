@@ -70,8 +70,9 @@ class CompilationEngine:
         token = self.tkz.advance()
         # varName
         self.printTag(token)
-        if kindToken == 'field':
+        if kindToken.lower() == 'field':
             self.nFieldVar += 1
+            print(f'nfieldvar {self.nFieldVar}')
         nameToken = token
         self.printTag(kindToken, 'identifierCat')
         self.st.define(nameToken, typeToken, kindToken)
@@ -88,7 +89,7 @@ class CompilationEngine:
             # varName
             token = self.tkz.advance()
             self.printTag(token)
-            if kindToken == 'field':
+            if kindToken.lower() == 'field':
                 self.nFieldVar += 1
             nameToken = token
 
@@ -112,23 +113,23 @@ class CompilationEngine:
         self.printTag(token)
         subRType = token
 
-        # start subroutine symbol table
-        self.st.startSubroutine(subRType)
-
         token = self.tkz.advance()
         # void | type
         self.printTag(token)
         typeToken = token
 
+        # start subroutine symbol table
+        self.st.startSubroutine(subRType, typeToken)
+
         # append this in the symbol table if subR is a constructor
-        if subRType == 'constructor':
-            self.st.define('this', typeToken, 'ARG')
-            self.vmw.writePush('constant', nFieldVar)
-            self.vmw.writeCall('Memory.alloc', '1')
-            self.vmw.writePop('pointer', '0')
-        elif subRType == 'method':
-            self.vmw.writePush('argument', '0')
-            self.vmw.writePop('pointer', '0')
+        #if subRType == 'constructor':
+        #    self.st.define('this', typeToken, 'ARG')
+        #    self.vmw.writePush('constant', self.nFieldVar)
+        #    self.vmw.writeCall('Memory.alloc', '1')
+        #    self.vmw.writePop('pointer', '0')
+        #elif subRType == 'method':
+        #    self.vmw.writePush('argument', '0')
+        #    self.vmw.writePop('pointer', '0')
 
         if typeToken not in ['int', 'char', 'boolean', 'void']:
             self.printTag('class', 'identifierCat')
@@ -233,6 +234,16 @@ class CompilationEngine:
         # write the vm code 'function filename.subName nLocalVars'
         self.vmw.writeFunction(self.fileName+'.'+self.subName, self.nLocalVars)
         self.nLocalVars = 0
+
+        # append this in the symbol table if subR is a constructor
+        if self.st.getSubRType() == 'constructor':
+            self.st.define('this', self.st.getClassType(), 'ARG')
+            self.vmw.writePush('constant', self.nFieldVar)
+            self.vmw.writeCall('Memory.alloc', '1')
+            self.vmw.writePop('pointer', '0')
+        elif self.st.getSubRType() == 'method':
+            self.vmw.writePush('argument', '0')
+            self.vmw.writePop('pointer', '0')
 
         if token != '}':
             self.compileStatements(token)
@@ -415,7 +426,7 @@ class CompilationEngine:
         self.vmw.writeArithmetic('not')
 
         # write if-goto label(else case label)
-        l1 = f'{self.fileName}_if_l{self.ifInd}'
+        l1 = f'{self.fileName}_if_{self.ifInd}'
         self.ifInd += 1
         self.vmw.writeIf(l1)
 
@@ -450,7 +461,7 @@ class CompilationEngine:
         self.printTag(token)
         
         # write goto l2
-        l2 = f'{self.fileName}_if_l{self.ifInd}'
+        l2 = f'{self.fileName}_if_{self.ifInd}'
         self.ifInd += 1 
         self.vmw.writeGoto(l2)
         
@@ -586,6 +597,7 @@ class CompilationEngine:
         self.tkz.backward()
         if kindToken and tok == '.':
             nArgs += 1
+            #print(f'varNammmmm {kindToken} {nArgs}')
 
         # cat of token is class or subroutine
         if not kindToken:
@@ -594,12 +606,17 @@ class CompilationEngine:
                 subName = nameToken+'.'
             else:
                 self.printTag('subroutine', 'identifierCat')
-                subName = nameToken
+                subName = self.fileName+'.'+nameToken
+                self.vmw.writePush('pointer','0')
+                nArgs += 1
         # cat of token is var, arg, static or field
         else:
             self.printTag(kindToken, 'identifierCat')
             indexToken = self.st.indexOf(nameToken)
             self.printTag(indexToken, 'identifierInd')
+            typeToken = self.st.typeOf(nameToken)
+
+            subName = typeToken+'.' 
 
             # vm code writer
             if kindToken == 'STATIC':
@@ -633,13 +650,14 @@ class CompilationEngine:
         
         token = self.tkz.advance()
         #if token != ')':
-        nArgs = self.compileExpressionList(token)
+        nArgs += self.compileExpressionList(token)
             
         token = self.tkz.advance()
         # )
         self.printTag(token)
 
         # write vm code for 'call subR|className.subR|varName.subR
+        print(f'varNammmmm2 {kindToken} {nArgs}')
         self.vmw.writeCall(subName, nArgs)
         self.vmw.writePop('temp', '0')
 
@@ -670,8 +688,9 @@ class CompilationEngine:
 
         #print('thissssss '+self.st.kindOf('this'))
         if self.st.getSubRType() == 'constructor':
-            self.vmw.writePush('pointer', '0')
-        elif not voidType:
+            #self.vmw.writePush('pointer', '0')
+            pass
+        elif voidType:
             self.vmw.writePush('constant', '0')
         
         # write vm code 'return'
@@ -771,7 +790,7 @@ class CompilationEngine:
         while (token in self.ops):
             # op
             opToken = token
-            print(f'optokennnn {opToken}')
+            #print(f'optokennnn {opToken}')
             self.printTag(token)
             
             token = self.tkz.advance()
@@ -880,12 +899,12 @@ class CompilationEngine:
             # token is keywordConstant
             elif self.tkz.tokenType() == 'keyword':
                 if token == 'true':
-                    self.vmw.writePush('constant','1')
-                    self.vmw.writeArithmetic('neg')
+                    self.vmw.writePush('constant','0')
+                    self.vmw.writeArithmetic('not')
                 elif token in ['false','null']:
                     self.vmw.writePush('constant','0')
                 else:
-                    self.vmw.writePush('argument','0')
+                    self.vmw.writePush('pointer','0')
 
 
             token = self.tkz.advance()
