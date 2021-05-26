@@ -14,7 +14,42 @@ class CompilationEngine:
         self.st = symTab
         self.tkz = tokenizer
         self.ops = ['+','-','*','/','|','=','<','>','&']+['&lt;', '&gt;', '&amp;']
+        self.charSet = {}
+        self.initCharSet()
         self.compileClass()
+
+
+    def initCharSet(self):
+        letters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+        sym1 = ['sp','!','"','#','$','%','&','\'','(',')','*','+',',','-','.','/'] 
+        sym2 = [':',';','<','=','>','?','@']
+        sym3 = ['[','gb',']','^','_','`'] 
+        sym4 = ['{','|','}','~']
+        smL = 97
+        lL = 65
+        numC = 48
+        sym1C = 32
+        sym2C = 58
+        sym3C = 91
+        sym4C = 123
+        for i,l in enumerate(letters):
+            self.charSet[l] = str(smL+i)
+            self.charSet[l.upper()] = str(lL+i)
+        for i,l in enumerate(sym1):
+            self.charSet[l] = str(sym1C+i)
+        for i,l in enumerate(sym2):
+            self.charSet[l] = str(sym2C+i)
+        for i,l in enumerate(sym3):
+            self.charSet[l] = str(sym3C+i)
+        for i,l in enumerate(sym4):
+            self.charSet[l] = str(sym4C+i)
+        for i in range(10):
+            self.charSet[str(i)] = str(numC+i)
+
+
+        for k,v in self.charSet.items():
+            print(f'{k} : {v}')
+        
 
     def compileClass(self):
         token = self.tkz.advance()
@@ -354,9 +389,11 @@ class CompilationEngine:
         # varName
         self.printTag(token)
         nameToken = token
+        segment = self.st.kindOf(nameToken)
+        index = self.st.indexOf(nameToken)
 
         kindToken = self.st.kindOf(nameToken)
-        print(f'KIND {kindToken} name {nameToken}')
+        #print(f'KIND {kindToken} name {nameToken}')
         self.printTag(kindToken, 'identifierCat')
 
         #self.st.define(nameToken, typeToken, kindToken)
@@ -369,10 +406,21 @@ class CompilationEngine:
         # [
         if token == '[':
             self.printTag(token)
+            if segment == 'STATIC':
+                self.vmw.writePush('static', index)
+            elif segment == 'FIELD':
+                self.vmw.writePush('this', index)
+            elif segment == 'ARG':
+                self.vmw.writePush('argument', index)
+            elif segment == 'LOCAL':
+                self.vmw.writePush('local', index)
 
             token = self.tkz.advance()
             # expression
             self.compileExpression(token)
+
+            # write vm code for adding a and index i where let a[i] = b[j]
+            self.vmw.writeArithmetic('add')
             
             token = self.tkz.advance()
             # ]
@@ -387,10 +435,12 @@ class CompilationEngine:
         # expression
         self.compileExpression(token)
         
-        if not arr:
-            segment = self.st.kindOf(nameToken)
-            index = self.st.indexOf(nameToken)
-            print(f'segmentttt {segment} {index}')
+        if arr:
+            self.vmw.writePop('temp', '0')
+            self.vmw.writePop('pointer', '1')
+            self.vmw.writePush('temp', '0')
+            self.vmw.writePop('that', '0')
+        else:
             if segment == 'STATIC':
                 self.vmw.writePop('static', index)
             elif segment == 'FIELD':
@@ -399,6 +449,7 @@ class CompilationEngine:
                 self.vmw.writePop('argument', index)
             elif segment == 'LOCAL':
                 self.vmw.writePop('local', index)
+
 
         token = self.tkz.advance()
         # ;
@@ -857,6 +908,7 @@ class CompilationEngine:
         else:
             # terms
             self.printTag(token)
+            term = token
             if self.tkz.tokenType() == 'identifier':
                 nameToken = token
                 kindToken = self.st.kindOf(nameToken)
@@ -906,15 +958,47 @@ class CompilationEngine:
                 else:
                     self.vmw.writePush('pointer','0')
 
+            # token is stringConstant
+            elif self.tkz.tokenType() == 'stringConstant':
+                strLen = len(term) - 2
+                self.vmw.writePush('constant', strLen)
+                self.vmw.writeCall('String.new','1')
+                for ch in term[1:-1]:
+                    if ch.isspace():
+                        self.vmw.writePush('constant', self.charSet['sp']) 
+                    else:
+                        self.vmw.writePush('constant', self.charSet[ch]) 
+                    self.vmw.writeCall('String.appendChar','2')
+
+
 
             token = self.tkz.advance()
             if token == '[':
                 # [
                 self.printTag(token)
+                #segment = self.st.kindOf(term)
+                #index = self.st.indexOf(term)
+                #if segment == 'STATIC':
+                #    self.vmw.writePush('static', index)
+                #elif segment == 'FIELD':
+                #    self.vmw.writePush('this', index)
+                #elif segment == 'ARG':
+                #    self.vmw.writePush('argument', index)
+                #elif segment == 'LOCAL':
+                #    self.vmw.writePush('local', index)
 
                 token = self.tkz.advance()
                 # expression
                 self.compileExpression(token)
+
+                # write vm code to add b and j where b and j as in b[j]
+                self.vmw.writeArithmetic('add')
+
+                # write vm code to set 'that' pointer to b[j]
+                self.vmw.writePop('pointer', '1')
+
+                # write vm code to push b[j] value on the stack
+                self.vmw.writePush('that', '0')
 
                 token = self.tkz.advance()
                 # ]
@@ -941,7 +1025,7 @@ class CompilationEngine:
                 
                 token = self.tkz.advance()
                 #if token != ')':
-                nArgs = self.compileExpressionList(token)
+                nArgs += self.compileExpressionList(token)
                     
                 token = self.tkz.advance()
                 # )
