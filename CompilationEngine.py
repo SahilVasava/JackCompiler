@@ -202,6 +202,10 @@ class CompilationEngine:
     def compileParameterList(self,token):
         print('<parameterList>\n\t')
         self.outF.write('<parameterList>\n\t')
+
+        if self.st.getSubRType() == 'method':
+            self.st.define('this', self.fileName, 'ARG')
+
         if token != ')':
 
             kindToken = 'ARG'
@@ -272,7 +276,7 @@ class CompilationEngine:
 
         # append this in the symbol table if subR is a constructor
         if self.st.getSubRType() == 'constructor':
-            self.st.define('this', self.st.getClassType(), 'ARG')
+            #self.st.define('this', self.st.getClassType(), 'ARG')
             self.vmw.writePush('constant', self.nFieldVar)
             self.vmw.writeCall('Memory.alloc', '1')
             self.vmw.writePop('pointer', '0')
@@ -667,6 +671,7 @@ class CompilationEngine:
             self.printTag(indexToken, 'identifierInd')
             typeToken = self.st.typeOf(nameToken)
 
+            print(f'typetoken {typeToken}')
             subName = typeToken+'.' 
 
             # vm code writer
@@ -932,6 +937,10 @@ class CompilationEngine:
                     self.printTag(kindToken, 'identifierCat')
                     indexToken = self.st.indexOf(nameToken)
                     self.printTag(indexToken, 'identifierInd')
+                    typeToken = self.st.typeOf(nameToken)
+
+                    print(f'typetoken {typeToken}')
+                    subName = typeToken+'.' 
 
                     # vm code writer
                     if kindToken == 'STATIC':
